@@ -1,0 +1,29 @@
+# Модели — большие файлы, не коммитим
+models/
+*.safetensors
+*.gguf
+*.bin
+
+# Результаты обучения — у каждого свои
+results/
+output/
+*.pt
+*.pth
+checkpoint-*/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Системное
+.DS_Store
+.env
+wandb/

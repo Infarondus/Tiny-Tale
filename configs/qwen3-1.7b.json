@@ -1,0 +1,18 @@
+{
+  "_comment": "Полное обучение Qwen3-1.7B. ~3.5GB в bf16, целиком влезает в 6GB VRAM.",
+  "_usage": "python train.py --config configs/qwen3-1.7b.json",
+  "_expected_time": "5-8 часов",
+
+  "model_name": "./models/Qwen3-1.7B",
+  "proj_dim": 13,
+  "rank": 1,
+  "lr": 1e-5,
+  "epochs": 3,
+  "batch_size": 1,
+  "num_generations": 4,
+  "max_new_tokens": 256,
+  "max_train_samples": null,
+  "max_eval_samples": 200,
+  "output_dir": "./results/Qwen3-1.7B",
+  "load_in_4bit": false
+}

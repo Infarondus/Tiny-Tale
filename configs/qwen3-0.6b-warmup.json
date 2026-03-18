@@ -1,0 +1,18 @@
+{
+  "_comment": "Прогрев перед полным обучением — 100 задач с полными параметрами. Проверяет OOM.",
+  "_usage": "python train.py --config configs/qwen3-0.6b-warmup.json",
+  "_expected_time": "~25 минут",
+
+  "model_name": "./Qwen_3_06B",
+  "proj_dim": 13,
+  "rank": 1,
+  "lr": 1e-5,
+  "epochs": 1,
+  "batch_size": 1,
+  "num_generations": 4,
+  "max_new_tokens": 256,
+  "max_train_samples": 100,
+  "max_eval_samples": 20,
+  "output_dir": "./results/Qwen3-0.6B-warmup",
+  "load_in_4bit": false
+}

@@ -66,15 +66,22 @@ def parse_args():
 def extract_answer(text: str) -> str | None:
     """
     Извлекает финальный ответ из текста модели.
-    Ищет паттерны типа: "#### 42", "The answer is 42", "= 42"
+    Стратегия: ищем маркеры в порядке надёжности.
     """
-    # GSM8K стандартный формат ответа: #### <число>
-    match = re.search(r"####\s*([\-\d,\.]+)", text)
+    # Основной формат GSM8K: #### 42 или #### <42>
+    match = re.search(r"####\s*<?\s*([\-\d,\.]+)\s*>?", text)
     if match:
         return match.group(1).replace(",", "").strip()
 
-    # Fallback: последнее число в тексте
-    numbers = re.findall(r"[\-\d]+(?:\.\d+)?", text.replace(",", ""))
+    # 2. Формат boxed: \boxed{42}
+    match = re.search(r"\\boxed\{([\-\d,\.]+)\}", text)
+    if match:
+        return match.group(1).replace(",", "").strip()
+
+    # 3. Последнее число в последних 200 символах текста
+    # Берём хвост — там обычно финальный ответ, а не числа из условия
+    tail = text[-200:].replace(",", "")
+    numbers = re.findall(r"-?\d+(?:\.\d+)?", tail)
     if numbers:
         return numbers[-1]
 
@@ -82,28 +89,15 @@ def extract_answer(text: str) -> str | None:
 
 
 def reward_correct_answer(completions: list[str], **kwargs) -> list[float]:
-    """
-    Функция награды для GRPO:
-      +1.0 если ответ совпадает с правильным
-       0.0 иначе
-
-    В trl 0.29 все поля датасета приходят через **kwargs.
-    Поле 'answer' мы кладём в датасет в prepare_dataset().
-
-    completions : список ответов модели (строки)
-    kwargs      : остальные поля батча, в т.ч. 'answer'
-    """
     answers = kwargs.get("answer", [])
     rewards = []
     for completion, gt_answer in zip(completions, answers):
         predicted = extract_answer(completion)
         gt_clean = str(gt_answer).replace(",", "").strip()
-
         if predicted is not None and predicted == gt_clean:
             rewards.append(1.0)
         else:
             rewards.append(0.0)
-
     return rewards
 
 
@@ -132,9 +126,9 @@ def prepare_dataset(tokenizer, split: str = "train", max_samples: int = None):
             {
                 "role": "system",
                 "content": (
-                    "You are a helpful math tutor. "
-                    "Solve the problem step by step. "
-                    "At the end, write your final answer after '####'."
+                    "Solve the math problem. "
+                    "Show your work briefly. "
+                    "End with: #### <number>"
                 ),
             },
             {
@@ -147,6 +141,9 @@ def prepare_dataset(tokenizer, split: str = "train", max_samples: int = None):
             messages,
             tokenize=False,
             add_generation_prompt=True,
+            enable_thinking=False,  # отключаем thinking mode у Qwen3
+                                    # иначе все токены уходят на <think>...</think>
+                                    # и модель не успевает написать финальный ответ
         )
 
         return {
@@ -242,10 +239,10 @@ def main():
         print("⚡ ТЕСТОВЫЙ ПРОГОН — урезанные параметры для проверки работоспособности")
         print("   Цель: убедиться что всё запускается, loss считается, градиент течёт")
         print("   Не ожидай улучшения качества — слишком мало данных!\n")
-        args.max_train_samples = args.max_train_samples or 20  # 20 вместо 50
+        args.max_train_samples = args.max_train_samples or 20
         args.max_eval_samples  = 10
         args.epochs            = 1
-        args.max_new_tokens    = 64   # 64 вместо 128 — вдвое быстрее генерация
+        args.max_new_tokens    = 512  # модель должна успеть дойти до финального ответа
         args.num_generations   = 2
         args.batch_size        = 1
 
@@ -390,6 +387,32 @@ def main():
     print(f"   Эпох: {args.epochs}")
     print(f"   Батч: {args.batch_size} x {grpo_config.gradient_accumulation_steps} = "
           f"{args.batch_size * grpo_config.gradient_accumulation_steps} эффективный")
+    print("-" * 60)
+
+    # --- Быстрая проверка генерации перед обучением ---
+    print("\n🔍 Проверка генерации (первые 100 токенов):")
+    test_messages = [{"role": "user", "content": "What is 2 + 2?"}]
+    test_prompt = tokenizer.apply_chat_template(
+        test_messages, tokenize=False,
+        add_generation_prompt=True,
+        enable_thinking=False,
+    )
+    test_inputs = tokenizer(test_prompt, return_tensors="pt").to(model.device)
+    with torch.no_grad():
+        test_out = model.generate(
+            **test_inputs, max_new_tokens=100,
+            do_sample=False,
+            pad_token_id=tokenizer.eos_token_id,
+        )
+    test_text = tokenizer.decode(
+        test_out[0][test_inputs["input_ids"].shape[1]:],
+        skip_special_tokens=False,
+    )
+    print(f"   Ответ модели: {test_text[:200]}")
+    if "<think>" in test_text:
+        print("⚠️  ВНИМАНИЕ: thinking mode всё ещё включён!")
+    else:
+        print("✅ Thinking mode выключен, генерация в порядке")
     print("-" * 60)
 
     trainer.add_callback(timing_cb)

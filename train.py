@@ -326,6 +326,9 @@ def main():
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         reward_funcs=reward_correct_answer,
+        processing_class=tokenizer,  # передаём токенизатор явно
+                                     # иначе trl загружает AutoProcessor
+                                     # который требует torchvision
     )
 
     # --- Колбэк для замера времени шагов ---

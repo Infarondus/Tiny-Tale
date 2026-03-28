@@ -125,14 +125,14 @@ def main():
         torch_dtype=torch.bfloat16, trust_remote_code=True,
     )
 
-    # --- Baseline ---
+    #  Baseline 
     print("\n📊 Оцениваем baseline (без TinyLoRA)...")
     baseline_acc = evaluate(
         model, tokenizer, prompts, answers,
         args.batch_size, args.max_new_tokens, "Baseline"
     )
 
-    # --- TinyLoRA ---
+    #  TinyLoRA 
     print("\n📊 Применяем TinyLoRA и оцениваем...")
     model, shared_v = apply_tinylora_to_model(
         model, rank=rank, proj_dim=proj_dim, seed=seed
@@ -155,7 +155,7 @@ def main():
         args.batch_size, args.max_new_tokens, "TinyLoRA"
     )
 
-    # --- Итог ---
+    #  Итог 
     print("\n" + "="*50)
     print(f"📈 РЕЗУЛЬТАТ ({model_name}):")
     print(f"   Baseline : {baseline_acc:.1%}")

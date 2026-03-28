@@ -6,7 +6,7 @@
   "model_name": "./models/Qwen3-1.7B",
   "proj_dim": 13,
   "rank": 1,
-  "lr": 1e-5,
+  "lr": 1e-4,
   "epochs": 3,
   "batch_size": 1,
   "num_generations": 4,

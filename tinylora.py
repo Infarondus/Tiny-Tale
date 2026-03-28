@@ -93,7 +93,7 @@ class TinyLoRALayer(nn.Module):
         self.d_out = d_out
         self.d_in = d_in
 
-        # --- SVD разложение исходной матрицы ---
+        #  SVD разложение исходной матрицы 
         # Делаем один раз при инициализации на CPU (float32 для точности SVD)
         W_cpu = weight.detach().float().cpu()
         U, S, Vh = torch.linalg.svd(W_cpu, full_matrices=False)
@@ -110,14 +110,14 @@ class TinyLoRALayer(nn.Module):
         self.register_buffer("S_r", S_r.float())
         self.register_buffer("V_r", V_r.float())
 
-        # --- Случайные проекционные матрицы P_i (фиксированные) ---
+        #  Случайные проекционные матрицы P_i (фиксированные) 
         rng = torch.Generator()
         rng.manual_seed(seed)
         P = torch.randn(proj_dim, r, r, generator=rng)
         P = P / (P.norm(dim=(-2, -1), keepdim=True) + 1e-8)
         self.register_buffer("P", P.float())  # тоже float32, тоже поедет на GPU
 
-        # --- Обучаемый вектор v ---
+        #  Обучаемый вектор v 
         if shared_v is not None:
             self.v = shared_v
         else:

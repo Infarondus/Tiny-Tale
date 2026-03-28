@@ -20,7 +20,7 @@
 | Qwen3-0.6B  | 0.6B | Qwen3   | ~1.2 GB | [HuggingFace](https://huggingface.co/Qwen/Qwen3-0.6B/tree/main) |
 | Qwen3.5-0.8B | 0.8B | Qwen3.5 | ~1.8 GB | [HuggingFace](https://huggingface.co/Qwen/Qwen3.5-0.8B/tree/main) |
 | Qwen3-1.7B  | 1.7B | Qwen3   | ~3.5 GB | [HuggingFace](https://huggingface.co/Qwen/Qwen3-1.7B/tree/main) |
-| Qwen3.5-2.5B | 2.5B | Qwen3.5 | ~5.0 GB | [HuggingFace](https://huggingface.co/Qwen/Qwen3.5-2B/tree/main) |
+| Qwen3.5-2B | 2B | Qwen3.5 | ~4.5 GB | [HuggingFace](https://huggingface.co/Qwen/Qwen3.5-2B/tree/main) |
 
 Все четыре модели помещаются целиком в 6GB VRAM без квантизации.
 
@@ -38,7 +38,7 @@ tiny-lora-scale-study/
 │   ├── qwen3-0.6b.json
 │   ├── qwen3.5-0.8b.json
 │   ├── qwen3-1.7b.json
-│   └── qwen3.5-2.5b.json
+│   └── qwen3.5-2b.json
 ├── models/            # сюда кладём скачанные модели (в .gitignore)
 └── results/           # сюда сохраняются результаты (в .gitignore)
 ```

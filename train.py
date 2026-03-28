@@ -20,9 +20,7 @@ from trl import GRPOConfig, GRPOTrainer
 from tinylora import apply_tinylora_to_model, count_trainable_params
 
 
-# ─────────────────────────────────────────────
 # 1. Аргументы командной строки
-# ─────────────────────────────────────────────
 def parse_args():
     parser = argparse.ArgumentParser(description="TinyLoRA GRPO Training")
     parser.add_argument("--config", type=str, default=None,
@@ -60,9 +58,7 @@ def parse_args():
     return parser.parse_args()
 
 
-# ─────────────────────────────────────────────
 # 2. Функция награды (Reward Function)
-# ─────────────────────────────────────────────
 def extract_answer(text: str) -> str | None:
     """
     Извлекает финальный ответ из текста модели.
@@ -79,12 +75,10 @@ def extract_answer(text: str) -> str | None:
         return match.group(1).replace(",", "").strip()
 
     # 3. Последнее число в последних 200 символах текста
-    # Берём хвост — там обычно финальный ответ, а не числа из условия
     tail = text[-200:].replace(",", "")
     numbers = re.findall(r"-?\d+(?:\.\d+)?", tail)
     if numbers:
         return numbers[-1]
-
     return None
 
 
@@ -101,9 +95,7 @@ def reward_correct_answer(completions: list[str], **kwargs) -> list[float]:
     return rewards
 
 
-# ─────────────────────────────────────────────
 # 3. Подготовка датасета GSM8K
-# ─────────────────────────────────────────────
 def prepare_dataset(tokenizer, split: str = "train", max_samples: int = None):
     """
     Загружает GSM8K и форматирует в chat-формат для Qwen3.
@@ -120,7 +112,6 @@ def prepare_dataset(tokenizer, split: str = "train", max_samples: int = None):
         # Извлекаем числовой ответ из строки вида "... #### 42"
         answer_text = example["answer"]
         gt_answer = extract_answer(answer_text)
-
         # Формируем промпт в chat-формате
         messages = [
             {
@@ -155,9 +146,7 @@ def prepare_dataset(tokenizer, split: str = "train", max_samples: int = None):
     return dataset
 
 
-# ─────────────────────────────────────────────
 # 4. Загрузка модели
-# ─────────────────────────────────────────────
 def load_model_and_tokenizer(model_name: str, load_in_4bit: bool = False):
     """
     Загружает модель на GPU явно через device_map="cuda:0".
@@ -210,13 +199,11 @@ def load_model_and_tokenizer(model_name: str, load_in_4bit: bool = False):
     return model, tokenizer
 
 
-# ─────────────────────────────────────────────
 # 5. Главная функция
-# ─────────────────────────────────────────────
 def main():
     args = parse_args()
 
-    # --- Загрузка JSON конфига (если указан) ---
+    #  Загрузка JSON конфига (если указан) 
     if args.config is not None:
         import json
         with open(args.config, "r", encoding="utf-8") as f:
@@ -234,7 +221,7 @@ def main():
 
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # --- Режим быстрого теста ---
+    #  Режим быстрого теста 
     if args.test_run:
         print("⚡ ТЕСТОВЫЙ ПРОГОН — урезанные параметры для проверки работоспособности")
         print("   Цель: убедиться что всё запускается, loss считается, градиент течёт")
@@ -246,13 +233,13 @@ def main():
         args.num_generations   = 2
         args.batch_size        = 1
 
-    # --- Загрузка модели ---
+    #  Загрузка модели 
     model, tokenizer = load_model_and_tokenizer(
         args.model_name,
         load_in_4bit=args.load_in_4bit,
     )
 
-    # --- Применяем TinyLoRA ---
+    #  Применяем TinyLoRA 
     print(f"\n🔧 Применяем TinyLoRA (proj_dim={args.proj_dim}, rank={args.rank})")
     model, shared_v = apply_tinylora_to_model(
         model,
@@ -271,7 +258,7 @@ def main():
     if stats['trainable'] != args.proj_dim:
         print(f"⚠️  ВНИМАНИЕ: ожидалось {args.proj_dim}, получено {stats['trainable']}!")
 
-    # --- Данные ---
+    #  Данные 
     print(f"\n📚 Загружаем GSM8K...")
     train_dataset = prepare_dataset(
         tokenizer, split="train", max_samples=args.max_train_samples
@@ -282,7 +269,7 @@ def main():
     print(f"   Train: {len(train_dataset)} примеров")
     print(f"   Eval:  {len(eval_dataset)} примеров")
 
-    # --- Конфигурация GRPO ---
+    #  Конфигурация GRPO 
     # Параметры для trl 0.29.x
     # gradient_accumulation: для теста 1 (быстро), для полного обучения 4
     accum_steps = 1 if args.test_run else 4
@@ -319,7 +306,7 @@ def main():
         seed=args.seed,
     )
 
-    # --- Инициализация GRPO Trainer ---
+    #  Инициализация GRPO Trainer 
     trainer = GRPOTrainer(
         model=model,
         args=grpo_config,
@@ -331,7 +318,7 @@ def main():
                                      # который требует torchvision
     )
 
-    # --- Колбэк для замера времени шагов ---
+    #  Колбэк для замера времени шагов 
     import time
     from transformers import TrainerCallback
 
@@ -356,7 +343,7 @@ def main():
 
     timing_cb = TimingCallback()
 
-    # --- Колбэк для сохранения shared_v каждые 100 шагов ---
+    #  Колбэк для сохранения shared_v каждые 100 шагов 
     # Стандартный save_pretrained не работает с shared tensors,
     # поэтому сохраняем только наш вектор v вручную
     class SaveVCallback(TrainerCallback):
@@ -383,7 +370,7 @@ def main():
 
     save_cb = SaveVCallback(model, args.output_dir, save_every=100)
 
-    # --- Запуск обучения ---
+    #  Запуск обучения 
     print(f"\n🚀 Начинаем обучение TinyLoRA с GRPO!")
     print(f"   Обучаемых параметров: {stats['trainable']}")
     print(f"   Learning rate: {args.lr}")
@@ -392,7 +379,7 @@ def main():
           f"{args.batch_size * grpo_config.gradient_accumulation_steps} эффективный")
     print("-" * 60)
 
-    # --- Быстрая проверка генерации перед обучением ---
+    #  Быстрая проверка генерации перед обучением 
     print("\n🔍 Проверка генерации (первые 100 токенов):")
     test_messages = [{"role": "user", "content": "What is 2 + 2?"}]
     test_prompt = tokenizer.apply_chat_template(
@@ -422,7 +409,7 @@ def main():
     trainer.add_callback(save_cb)
     trainer.train()
 
-    # --- Финальное сохранение ---
+    #  Финальное сохранение 
     print(f"\n💾 Сохраняем финальные результаты в {args.output_dir}")
     shared_v = model.tinylora_shared_v
     torch.save(
